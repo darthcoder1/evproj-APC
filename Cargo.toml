@@ -1,0 +1,34 @@
+[package]
+authors = ["Martin Zielinski <darthcoder1@gmail.com>"]
+name = "APC"
+version = "0.1.0"
+
+[dependencies]
+cortex-m-rt = "*"
+
+[dependencies.cortex-m]
+version = "*"
+features = ["inline-asm"]
+
+[dependencies.stm32f103xx-hal]
+git = "https://github.com/japaric/stm32f103xx-hal.git"
+features = ["rt"]
+version = "*"
+
+[dependencies.embedded-hal]
+features = ["unproven"]
+version = "*"
+
+[profile.dev]
+panic = "abort"
+debug = true
+opt-level = 0
+lto = false
+debug-assertions = true
+
+
+[profile.release]
+panic = "abort"
+codegen-units = 1 # better optimizations
+debug = true
+lto = true # better optimizations

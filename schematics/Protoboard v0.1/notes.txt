@@ -1,0 +1,4 @@
+
+The Prototype v0.1 has an error on U3. Trace to PA8 is not connected correctly!
+
+The inputs are pulled down to ground. I'd rather pull them up to +12v, and switch them to ground to simplify the wiring harness
