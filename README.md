@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is an ARM Cortex M3 controlling the power output to the auxilaries of a motorcycle. The
+This is an ARM Cortex M3 (STM32F103C8T6) controlling the power output to the auxilaries of a motorcycle. The
 MCU reads input from the driver controls, processes these and switches the according auxilaries
 on or off (Headlight, Brakelight, Turn signals, etc). The output is controlled via BTS432E2 
 powerfets with on-die protection for all the things (ESD, shorts, etc) as well as a diagnosis pin.
