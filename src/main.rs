@@ -1,7 +1,11 @@
 #![no_std]
 #![no_main]
+
+#![feature(asm)]
+
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
+#![allow(unused_variables)]
 
 extern crate cortex_m;
 extern crate cortex_m_rt as rt;
@@ -26,13 +30,15 @@ use core::panic::PanicInfo;
 #[entry]
 fn main() -> ! {
 
+	openocd_print("Mensch boese!. Muss Mensch toeten!");
+
 	let mut _cortex_m = cortex_m::Peripherals::take().unwrap();
 	let _stm32f103 = stm32f103xx::Peripherals::take().unwrap();
 
 	let mut _flash = _stm32f103.FLASH.constrain();
 	let mut _rcc = _stm32f103.RCC.constrain();
-
 	let _clocks = _rcc.cfgr.freeze(& mut _flash.acr);
+ 
 	_cortex_m.DWT.enable_cycle_counter();
 
 	let mut gpioa = _stm32f103.GPIOA.split(& mut _rcc.apb2);
@@ -90,7 +96,7 @@ fn main() -> ! {
 	let mut channel12 = gpioa.pa0.into_push_pull_output(& mut gpioa.crl);  	channel11.set_low();
 
 	// create the mapping
-	let mut outChannels = PowerOutputConfig {
+	let mut out_channels = PowerOutputConfig {
 		channels: [
 			& mut channel01,
 			& mut channel02,
@@ -111,11 +117,14 @@ fn main() -> ! {
 
 	// setup the turn signal state
 	let mut _system_state = logic::SystemState {
+		active : false,
 		turn_left : logic::State::Inactive,
 		turn_right : logic::State::Inactive,
 		hazard : logic::State::Inactive,
 	};
 
+	// DELETE ME! Debug code
+	_system_state.active = true;
 
     loop {
 		let mut input = logic::read_input( [
@@ -123,16 +132,60 @@ fn main() -> ! {
 			& mut controlInput1,
 		]);
 
+		// DELETE ME! Debug code
 		input.ignition = true;
 		input.turn_left = input.turn_left;
 
-		_system_state = logic::tick(& input, _system_state, & mut outChannels, _clocks);
-
-		// read diagnosis from PFETs
-
-    	// output telemetry data
+		match _system_state.active {
+			false => _system_state = locked_tick(_clocks, & input, _system_state, & mut out_channels),
+			true => _system_state = active_tick(_clocks, & input, _system_state, & mut out_channels),
+		}
     }
  }
+
+fn locked_tick(clock : time::Clocks, input : & logic::Input, system_state : logic::SystemState, out_channels : & mut PowerOutputConfig) -> logic::SystemState
+{
+	system_state
+}
+
+fn active_tick(clock : time::Clocks, input : & logic::Input, system_state : logic::SystemState, out_channels : & mut PowerOutputConfig) -> logic::SystemState
+{
+	let _stm32f103 = stm32f103xx::Peripherals::take().unwrap();
+
+	let new_sys_state = logic::tick(& input, system_state, out_channels, clock);
+
+	// read diagnosis from PFETs
+
+   	// output telemetry data
+	new_sys_state
+}
+
+fn debug_print(message : & str)
+{
+	
+}
+
+fn openocd_print(message : & str)
+{
+	let command = 0x05;
+	let message_cstr = CString::new(message).expect("CString::new failed!");
+
+	let msg : [u32;4] = [
+		2, // stderr
+		message_cstr.as_ptr() as u32,
+		message.len(),
+	];
+
+	asm!("mov r0, $0
+		  mov r1, $1
+		  bkpt #0xAB"
+		: 				// no output
+		: "r"(command), "r"(msg.as_ptr() as u32) 	// inputs
+		: "r0", "r1" 	// clobbers
+		: 				// options
+	);
+}
+
 
 #[panic_handler]
 unsafe fn panic(info: &PanicInfo) -> ! {

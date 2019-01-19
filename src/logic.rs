@@ -17,6 +17,9 @@ pub enum State
 // state
 pub struct SystemState
 {
+	// indicates whether the system is in locked or active
+	pub active : bool,
+
     pub turn_left : State,
 	pub turn_right : State,
 	pub hazard : State,
@@ -181,6 +184,7 @@ fn update_state(_prev_state : State, _input_flag : bool) -> State {
 fn update_system_state(_system : SystemState, _input : &Input) -> SystemState {
 
 	SystemState {
+		active : _system.active,
         turn_left : update_state(_system.turn_left, _input.turn_left),
 	    turn_right : update_state(_system.turn_right, _input.turn_right),
 	    hazard : update_state(_system.hazard, _input.hazard_light)
@@ -217,7 +221,7 @@ fn caclulate_turn_signal(_state : &State, _cur_time : TimeStamp, _on_time : u32,
 fn switch_turn_signals(_system_state : &SystemState, _input : &Input, _clocks : &time::Clocks, _power_out : & mut PowerOutput)
 {
 	let current_time = time::device_get_ticks();
-	let _one_sec_in_ticks = time::time_ms_to_ticks(&_clocks, 500);
+	let _one_sec_in_ticks = time::time_ms_to_ticks(&_clocks, 1000);
 
 	let _hazard_on = match _system_state.hazard {
 		State::Active(_start_time) => (true, caclulate_turn_signal(&_system_state.hazard, current_time, _one_sec_in_ticks, _one_sec_in_ticks)),
@@ -354,5 +358,5 @@ pub fn tick(input : & Input, _system_state : SystemState, channelConfig : & mut 
     let _power_out = switch_power_output(&_new_system_state, input, &_clocks);
     
     apply_power_output(_power_out, channelConfig);
-    _new_system_state
+	_new_system_state
 }

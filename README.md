@@ -28,7 +28,7 @@ Rust must be installed as well as the rust target .
 
 ## Deployment
 
-
+Check the scripts
 
 ## Inputs
 
@@ -67,3 +67,16 @@ The outputs are switched by a BTS432E2 powerFET per channel.
 * Horn                      [Ch 09]
 * Unused                    [Ch 10]
 * Unused                    [Ch 11]
+
+
+## States
+
+When turned on, the APC is in the "locked" state. The driver needs to press the front and the back brake down 
+for 1 sec to active the APC. The "active" state is then reading the drivers controls and switches the power
+for the auxialiers on or off. 
+
+"locked" ==> [ Break Signal Front + Back for 1 sec ] ==> "active"
+? "active" ==> [ ... ] ==> "debug"
+
+
+
