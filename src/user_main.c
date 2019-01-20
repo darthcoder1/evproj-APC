@@ -5,6 +5,8 @@
 // Entry point
 int user_main(void)
 {
+    printf("Initialized!\r\n");
+    
     while (1) 
     {
         GPIOC->BRR |= 1<<13;

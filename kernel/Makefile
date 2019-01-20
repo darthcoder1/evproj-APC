@@ -63,7 +63,8 @@ kernel/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c \
 kernel/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c \
 kernel/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c \
 kernel/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c \
-src/user_main.c
+src/user_main.c \
+src/syscalls.c
 
 # ASM sources
 ASM_SOURCES =  \
@@ -112,7 +113,8 @@ AS_DEFS =
 # C defines
 C_DEFS =  \
 -DUSE_HAL_DRIVER \
--DSTM32F103xB
+-DSTM32F103xB \
+-DUSE_FULL_ASSERT
 
 
 # AS includes
