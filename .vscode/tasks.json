@@ -14,7 +14,10 @@
             "group": {
                 "kind": "build",
                 "isDefault": true
-            }
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
         },
         {
             "label": "Make Clean",
@@ -30,6 +33,18 @@
             "problemMatcher": [
                 "$gcc"
             ]
+        },
+        {
+            "label": "Flash firmware",
+            "type": "shell",
+            "command": "D:/Development/Tools/stlink-1.3.0-win64/bin/st-flash.exe write ./build/APC.bin 0x08000000",
+            "options": {
+                "cwd": "${workspaceRoot}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         }
     ]
 }

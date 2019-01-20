@@ -5,7 +5,7 @@
 		}
 	],
 	"settings": {
-		"cortex-debug.openocdPath": "d:/Development/Tools/openocd_win/bin/openocd.exe",
+        "cortex-debug.openocdPath": "d:/Development/Tools/openocd_win/bin/openocd.exe",
 		"files.associations": {
 			"stdint.h": "c",
 			"main.h": "c",

@@ -36,7 +36,6 @@ BUILD_DIR = build
 ######################################
 # C sources
 C_SOURCES =  \
-kernel/Core/Src/main.c \
 kernel/Core/Src/stm32f1xx_it.c \
 kernel/Core/Src/stm32f1xx_hal_msp.c \
 kernel/Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio_ex.c \
@@ -51,7 +50,8 @@ kernel/Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_cortex.c \
 kernel/Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_pwr.c \
 kernel/Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash.c \
 kernel/Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash_ex.c \
-kernel/Core/Src/system_stm32f1xx.c  
+kernel/Core/Src/system_stm32f1xx.c  \
+src/main.c \
 
 # ASM sources
 ASM_SOURCES =  \
