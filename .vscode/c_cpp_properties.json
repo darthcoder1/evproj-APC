@@ -5,7 +5,10 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/src/**",
-                "${workspaceFolder}/APC/**",
+                "${workspaceFolder}/kernel/**",
+                "${workspaceFolder}/kernel/Core/Inc/**",
+                "${workspaceFolder}/kernel/Drivers/Inc/**",
+                "${workspaceFolder}/kernel/Middlewares/**/Inc/**",
                 "d:/development/tools/win-gcc-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/7.3.1/include",
                 "d:/development/tools/win-gcc-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/7.3.1/include-fixed",
                 "d:/development/tools/win-gcc-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/7.3.1/../../../../arm-none-eabi/include"
@@ -13,7 +16,8 @@
             "defines": [
                 "_DEBUG",
                 "UNICODE",
-                "_UNICODE"
+                "_UNICODE",
+                "STM32F103xB"
             ],
             "windowsSdkVersion": "10.0.17763.0",
             "compilerPath": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Professional/VC/Tools/MSVC/14.16.27023/bin/Hostx64/x64/cl.exe",
