@@ -26,7 +26,10 @@
                 "focus": false,
                 "panel": "shared"
             },
-            "group": "build"
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]
 }

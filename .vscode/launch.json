@@ -7,7 +7,7 @@
         {
             "name": "Cortex Debug (stutil)",
             "cwd": "${workspaceRoot}",
-            "executable": "./target/thumbv7em-none-eabihf/debug/APC",
+            "executable": "./build/APC.elf",
             "request": "launch",
             "type": "cortex-debug",
             "servertype": "stutil",
@@ -17,7 +17,7 @@
         {
             "name": "Cortex Debug (openocd)",
             "cwd": "${workspaceRoot}",
-            "executable": "./target/thumbv7em-none-eabihf/debug/APC",
+            "executable": "./build/APC.elf",
             "request": "launch",
             "type": "cortex-debug",
             "servertype": "openocd",
