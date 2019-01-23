@@ -74,6 +74,21 @@ static const PinMapEntry_t g_PinMapping[] = {
     {.gpio = GPIOA, .pin = GPIO_PIN_9 },  // Pin_Input1_S1
     {.gpio = GPIOA, .pin = GPIO_PIN_8 },  // Pin_Input1_S2
     {.gpio = GPIOB, .pin = GPIO_PIN_3 },  // Pin_Input1_Data
+
+    // output channels
+    {.gpio = GPIOA, .pin = GPIO_PIN_6 },  // Pin_Output_Ch_0
+    {.gpio = GPIOA, .pin = GPIO_PIN_7 },  // Pin_Output_Ch_1
+    {.gpio = GPIOB, .pin = GPIO_PIN_0 },  // Pin_Output_Ch_2
+    {.gpio = GPIOB, .pin = GPIO_PIN_1 },  // Pin_Output_Ch_3
+    {.gpio = GPIOB, .pin = GPIO_PIN_10 }, // Pin_Output_Ch_4
+    {.gpio = GPIOB, .pin = GPIO_PIN_11 }, // Pin_Output_Ch_5
+    {.gpio = GPIOA, .pin = GPIO_PIN_5 },  // Pin_Output_Ch_6
+    {.gpio = GPIOA, .pin = GPIO_PIN_4 },  // Pin_Output_Ch_7
+    {.gpio = GPIOA, .pin = GPIO_PIN_3 },  // Pin_Output_Ch_8
+    {.gpio = GPIOA, .pin = GPIO_PIN_2 },  // Pin_Output_Ch_9
+    {.gpio = GPIOA, .pin = GPIO_PIN_1 },  // Pin_Output_Ch_10
+    {.gpio = GPIOA, .pin = GPIO_PIN_0 },  // Pin_Output_Ch_11
+
 };
 
 // Initialize the pin with the specified settings
@@ -123,11 +138,10 @@ void input_channels_initialize()
     initialize_gpio_pin(Pin_Input1_S2, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
     initialize_gpio_pin(Pin_Input1_Data, GPIO_MODE_INPUT, GPIO_NOPULL);
 
-    //    for (int i = 0; i < Pin_Output_NumOutputs; ++i)
-    //    {
-    //       initialize_gpio_pin(Pin_Output_First + i, GPIO_MODE_OUTPUT_PP,
-    //       GPIO_PULLDOWN);
-    //    }
+    for (int i = 0; i < Pin_Output_NumOutputs; ++i)
+    {
+        initialize_gpio_pin(Pin_Output_First + i, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    }
 }
 
 uint8_t read_input_channel(uint32_t channelIdx)
@@ -144,7 +158,6 @@ uint8_t read_input_channel(uint32_t channelIdx)
 
 uint16_t read_input_channels()
 {
-    // usb_handler_stop();
     uint16_t ret = 0;
     for (int i = 0; i < 8; ++i)
     {
@@ -155,8 +168,6 @@ uint16_t read_input_channels()
         write_gpio_pin(Pin_Input0_S2, sel.s2);
         ret |= read_gpio_pin(Pin_Input0_Data) << i;
     }
-
-    // usb_handler_start();
 
     for (int i = 0; i < 8; ++i)
     {
@@ -197,6 +208,46 @@ void user_initialize()
     write_gpio_pin(Pin_OnBoard_LED, 1);
 }
 
+uint16_t handle_input_stage()
+{
+    uint16_t input_state = read_input_channels();
+
+    const uint32_t numInputChannels = 16;
+    uint8_t channel[numInputChannels];
+
+    int numActive = 0;
+    for (int i = 0; i < numInputChannels; ++i)
+    {
+        channel[i] = (input_state >> i) & 0x1;
+
+        if (channel[i] != 0)
+        {
+            printf("Channel %d,", i);
+            ++numActive;
+        }
+    }
+
+    if (numActive > 0)
+    {
+        printf("\r\n");
+    }
+    return input_state;
+}
+
+void switch_direct_input_to_output(uint16_t input)
+{
+    // directly map to output for testing
+
+    for (int i = 0; i < Pin_Output_NumOutputs; ++i)
+    {
+        write_gpio_pin(Pin_Output_First + i, (input >> i) & 0x1);
+    }
+
+    // HACK: map input channel 12 to output channel 6. This is only needed for
+    // 2nd proto v0.1 board due to accidentialy cut trace
+    write_gpio_pin(Pin_Output_Ch_6, (input >> 12) & 0x1);
+}
+
 // Entry point
 int user_main(void)
 {
@@ -206,27 +257,9 @@ int user_main(void)
     {
         write_gpio_pin(Pin_OnBoard_LED, 0);
 
-        uint16_t input_state = read_input_channels();
+        uint16_t input_state = handle_input_stage();
 
-        const uint32_t numInputChannels = 16;
-        uint8_t channel[numInputChannels];
-
-        int numActive = 0;
-        for (int i = 0; i < numInputChannels; ++i)
-        {
-            channel[i] = (input_state >> i) & 0x1;
-
-            if (channel[i] != 0)
-            {
-                printf("Channel %d,", i);
-                ++numActive;
-            }
-        }
-
-        if (numActive > 0)
-        {
-            printf("\r\n");
-        }
+        switch_direct_input_to_output(input_state);
 
         HAL_Delay(500);
         write_gpio_pin(Pin_OnBoard_LED, 1);
