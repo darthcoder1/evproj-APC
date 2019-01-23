@@ -8,8 +8,7 @@ typedef struct
     uint32_t pin;
 } PinMapEntry_t;
 
-typedef enum
-{
+typedef enum {
     Pin_OnBoard_LED = 0,
 
     // input
@@ -23,7 +22,22 @@ typedef enum
     Pin_Input1_S2,
     Pin_Input1_Data,
 
+    Pin_Output_Ch_0,
+    Pin_Output_Ch_1,
+    Pin_Output_Ch_2,
+    Pin_Output_Ch_3,
+    Pin_Output_Ch_4,
+    Pin_Output_Ch_5,
+    Pin_Output_Ch_6,
+    Pin_Output_Ch_7,
+    Pin_Output_Ch_8,
+    Pin_Output_Ch_9,
+    Pin_Output_Ch_10,
+    Pin_Output_Ch_11,
+
     Pin_NumIds,
+    Pin_Output_First = Pin_Output_Ch_0,
+    Pin_Output_NumOutputs = (Pin_Output_Ch_11 - Pin_Output_Ch_0) + 1,
 } PinId;
 
 typedef struct
@@ -36,33 +50,34 @@ typedef struct
 // Selector bit settings to access a specific channel
 // see schematics and datasheet for 74HC4051
 static const InputChannelSelector_t g_inputChannelSelector[] = {
-    { .s0 = 1, .s1 = 1, .s2 = 0 }, // Y3 -> Channel 0
-    { .s0 = 0, .s1 = 0, .s2 = 0 }, // Y0 -> Channel 1
-    { .s0 = 1, .s1 = 0, .s2 = 0 }, // Y1 -> Channel 2
-    { .s0 = 0, .s1 = 1, .s2 = 0 }, // Y2 -> Channel 3
-    { .s0 = 1, .s1 = 0, .s2 = 1 }, // Y5 -> Channel 4
-    { .s0 = 1, .s1 = 1, .s2 = 1 }, // Y7 -> Channel 5
-    { .s0 = 0, .s1 = 1, .s2 = 1 }, // Y6 -> Channel 6
-    { .s0 = 0, .s1 = 0, .s2 = 1 }, // Y4 -> Channel 7
+    {.s0 = 1, .s1 = 1, .s2 = 0 }, // Y3 -> Channel 0
+    {.s0 = 0, .s1 = 0, .s2 = 0 }, // Y0 -> Channel 1
+    {.s0 = 1, .s1 = 0, .s2 = 0 }, // Y1 -> Channel 2
+    {.s0 = 0, .s1 = 1, .s2 = 0 }, // Y2 -> Channel 3
+    {.s0 = 1, .s1 = 0, .s2 = 1 }, // Y5 -> Channel 4
+    {.s0 = 1, .s1 = 1, .s2 = 1 }, // Y7 -> Channel 5
+    {.s0 = 0, .s1 = 1, .s2 = 1 }, // Y6 -> Channel 6
+    {.s0 = 0, .s1 = 0, .s2 = 1 }, // Y4 -> Channel 7
 };
 
 static const PinMapEntry_t g_PinMapping[] = {
-    { .gpio = GPIOC, .pin = GPIO_PIN_13 }, // Pin_OnBoard_LED
+    {.gpio = GPIOC, .pin = GPIO_PIN_13 }, // Pin_OnBoard_LED
 
     // input channels 0-7
-    { .gpio = GPIOA, .pin = GPIO_PIN_11 }, // Pin_Input0_S0
-    { .gpio = GPIOA, .pin = GPIO_PIN_12 }, // Pin_Input0_S1
-    { .gpio = GPIOA, .pin = GPIO_PIN_15 }, // Pin_Input0_S2
-    { .gpio = GPIOB, .pin = GPIO_PIN_4 },  // Pin_Input0_Data
+    {.gpio = GPIOB, .pin = GPIO_PIN_15 }, // Pin_Input0_S0
+    {.gpio = GPIOB, .pin = GPIO_PIN_14 }, // Pin_Input0_S1
+    {.gpio = GPIOA, .pin = GPIO_PIN_15 }, // Pin_Input0_S2
+    {.gpio = GPIOB, .pin = GPIO_PIN_4 },  // Pin_Input0_Data
 
     // input channels 8 - 15
-    { .gpio = GPIOA, .pin = GPIO_PIN_10 }, // Pin_Input1_S0
-    { .gpio = GPIOA, .pin = GPIO_PIN_9 },  // Pin_Input1_S1
-    { .gpio = GPIOA, .pin = GPIO_PIN_8 },  // Pin_Input1_S2
-    { .gpio = GPIOB, .pin = GPIO_PIN_3 },  // Pin_Input1_Data
+    {.gpio = GPIOA, .pin = GPIO_PIN_10 }, // Pin_Input1_S0
+    {.gpio = GPIOA, .pin = GPIO_PIN_9 },  // Pin_Input1_S1
+    {.gpio = GPIOA, .pin = GPIO_PIN_8 },  // Pin_Input1_S2
+    {.gpio = GPIOB, .pin = GPIO_PIN_3 },  // Pin_Input1_Data
 };
 
-void intialize_gpio_pin(PinId pinId, uint32_t gpioMode, uint32_t pullMode)
+// Initialize the pin with the specified settings
+void initialize_gpio_pin(PinId pinId, uint32_t gpioMode, uint32_t pullMode)
 {
     GPIO_InitTypeDef gpio_init = {
         .Pin = g_PinMapping[pinId].pin, .Mode = gpioMode, .Pull = pullMode, .Speed = GPIO_SPEED_FREQ_LOW
@@ -71,6 +86,7 @@ void intialize_gpio_pin(PinId pinId, uint32_t gpioMode, uint32_t pullMode)
     HAL_GPIO_Init(g_PinMapping[pinId].gpio, &gpio_init);
 }
 
+// sets pin according to 'value'
 void write_gpio_pin(PinId pinId, uint32_t value)
 {
     HAL_GPIO_WritePin(g_PinMapping[pinId].gpio, g_PinMapping[pinId].pin,
@@ -86,33 +102,41 @@ void write_gpio_pin(PinId pinId, uint32_t value)
     }
 }
 
+// returns state of the pin
 uint32_t read_gpio_pin(PinId pinId)
 {
     return (g_PinMapping[pinId].gpio->IDR & g_PinMapping[pinId].pin) != 0 ? 1 : 0;
 }
 
+// initialize input channels
 void input_channels_initialize()
 {
     // Input channels: 0-7, handled by MAX4558 at U2
-    intialize_gpio_pin(Pin_Input0_S0, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    intialize_gpio_pin(Pin_Input0_S1, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    intialize_gpio_pin(Pin_Input0_S2, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    intialize_gpio_pin(Pin_Input0_Data, GPIO_MODE_INPUT, GPIO_NOPULL);
+    initialize_gpio_pin(Pin_Input0_S0, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    initialize_gpio_pin(Pin_Input0_S1, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    initialize_gpio_pin(Pin_Input0_S2, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    initialize_gpio_pin(Pin_Input0_Data, GPIO_MODE_INPUT, GPIO_NOPULL);
 
     // Input channels: 8-15, handled by MAX4558 at U3
-    intialize_gpio_pin(Pin_Input1_S0, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    intialize_gpio_pin(Pin_Input1_S1, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    intialize_gpio_pin(Pin_Input1_S2, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    intialize_gpio_pin(Pin_Input1_Data, GPIO_MODE_INPUT, GPIO_NOPULL);
+    initialize_gpio_pin(Pin_Input1_S0, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    initialize_gpio_pin(Pin_Input1_S1, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    initialize_gpio_pin(Pin_Input1_S2, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    initialize_gpio_pin(Pin_Input1_Data, GPIO_MODE_INPUT, GPIO_NOPULL);
+
+    //    for (int i = 0; i < Pin_Output_NumOutputs; ++i)
+    //    {
+    //       initialize_gpio_pin(Pin_Output_First + i, GPIO_MODE_OUTPUT_PP,
+    //       GPIO_PULLDOWN);
+    //    }
 }
 
 uint8_t read_input_channel(uint32_t channelIdx)
 {
     InputChannelSelector_t sel = g_inputChannelSelector[channelIdx];
 
-    write_gpio_pin(Pin_Input0_S0, sel.s0);
+    write_gpio_pin(Pin_Input0_S2, sel.s0);
     write_gpio_pin(Pin_Input0_S1, sel.s1);
-    write_gpio_pin(Pin_Input0_S2, sel.s2);
+    write_gpio_pin(Pin_Input0_S0, sel.s2);
 
     uint32_t pin_status = read_gpio_pin(Pin_Input0_Data);
     return pin_status;
@@ -151,11 +175,6 @@ void ErrorLoop();
 // Hooks called from kernel code
 void user_initialize()
 {
-    // enable GPIO clocks
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOC_CLK_ENABLE();
-
     // enable usb
     if (usb_handler_initialize() != Success)
         ErrorLoop();
@@ -163,11 +182,16 @@ void user_initialize()
     if (usb_handler_start() != Success)
         ErrorLoop();
 
+    // enable GPIO clocks
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+
     // initialize input channel GPIOs
     input_channels_initialize();
 
     // GPIO Ports Clock Enable
-    intialize_gpio_pin(Pin_OnBoard_LED, GPIO_MODE_OUTPUT_PP, GPIO_PULLUP);
+    initialize_gpio_pin(Pin_OnBoard_LED, GPIO_MODE_OUTPUT_PP, GPIO_PULLUP);
 
     // Configure GPIO pin Output Level
     write_gpio_pin(Pin_OnBoard_LED, 1);
@@ -187,15 +211,22 @@ int user_main(void)
         const uint32_t numInputChannels = 16;
         uint8_t channel[numInputChannels];
 
+        int numActive = 0;
         for (int i = 0; i < numInputChannels; ++i)
         {
             channel[i] = (input_state >> i) & 0x1;
+
+            if (channel[i] != 0)
+            {
+                printf("Channel %d,", i);
+                ++numActive;
+            }
         }
 
-        printf("Input Channel  %d%d%d%d %d%d%d%d %d%d%d%d %d%d%d%d\r\n", channel[0],
-               channel[1], channel[2], channel[3], channel[4], channel[5],
-               channel[6], channel[7], channel[8], channel[9], channel[10],
-               channel[11], channel[12], channel[13], channel[14], channel[15]);
+        if (numActive > 0)
+        {
+            printf("\r\n");
+        }
 
         HAL_Delay(500);
         write_gpio_pin(Pin_OnBoard_LED, 1);

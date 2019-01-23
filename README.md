@@ -55,8 +55,8 @@ must be setup to indicate which channel should be read from. The data pin then f
 channel.
 
 Input channels: 0-7
-    PA11 - Selector 0
-    PA12 - Selector 1
+    PB15 - Selector 0   # was PA11 on APC Proto v0.1
+    PAB4 - Selector 1   # was PA12 on APC Proto v0.1
     PA15 - Selector 2
     PB04 - Data
 

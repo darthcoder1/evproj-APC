@@ -7,17 +7,16 @@
         {
             "name": "Cortex Debug (stutil)",
             "cwd": "${workspaceRoot}",
-            "executable": "./build/APC.elf",
+            "executable": "${workspaceRoot}/build/APC.elf",
             "request": "launch",
             "type": "cortex-debug",
             "servertype": "stutil",
             "v1": false,
-            
         },
         {
             "name": "Cortex Debug (openocd)",
             "cwd": "${workspaceRoot}",
-            "executable": "./build/APC.elf",
+            "executable": "${workspaceRoot}/build/APC.elf",
             "request": "launch",
             "type": "cortex-debug",
             "servertype": "openocd",
