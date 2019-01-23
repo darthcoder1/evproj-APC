@@ -64,7 +64,8 @@ kernel/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c \
 kernel/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c \
 kernel/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c \
 src/user_main.c \
-src/syscalls.c
+src/syscalls.c \
+src/usb_handler.c
 
 # ASM sources
 ASM_SOURCES =  \

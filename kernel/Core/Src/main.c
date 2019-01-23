@@ -54,7 +54,6 @@
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
 
 /**
  * @brief  The application entry point.
@@ -70,11 +69,11 @@ int main(void)
     SystemClock_Config();
 
     /* Initialize all configured peripherals */
-    MX_GPIO_Init();
-    MX_USB_DEVICE_Init();
+    extern void user_initialize();
+    user_initialize();
 
     // call into user_main
-    extern int user_main(void);
+    extern int user_main();
     user_main();
 }
 
@@ -119,21 +118,6 @@ void SystemClock_Config(void)
     {
         Error_Handler();
     }
-}
-
-/**
- * @brief GPIO Initialization Function
- * @param None
- * @retval None
- */
-static void MX_GPIO_Init(void)
-{
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOC_CLK_ENABLE();
-
-    extern void user_initialize_gpio();
-    user_initialize_gpio();
 }
 
 void Error_Handler(void)
