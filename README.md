@@ -32,7 +32,7 @@ Check the scripts
 
 ## Inputs
 
-The input is handled by a BD3376EFV-CE2 (Multiple Inpout Switch Monitor). All external driver controls 
+The input is handled by a BD3376EFV-CE2 (Multiple Input Switch Monitor). All external driver controls 
 are connected via this chip. It is responsible for securing against hazards (ESD, shorts,etc) and dispatches
 the state of the inputs to the ARM Cortex M3 via SPI.
 
@@ -48,6 +48,24 @@ the state of the inputs to the ARM Cortex M3 via SPI.
 * Brake signal Front    [Ch 08]
 * Brake signal Rear     [Ch 09]
 * Horn                  [Ch 10]
+
+
+The MISM is connected via the following pinout to the STM32. To read a specific input channel, the Selector bits 
+must be setup to indicate which channel should be read from. The data pin then forwards the state of the selected
+channel.
+
+Input channels: 0-7
+    PA11 - Selector 0
+    PA12 - Selector 1
+    PA15 - Selector 2
+    PB04 - Data
+
+Input channels: 8-15
+    PA10 - Selector 0
+    PA09 - Selector 1
+    PA08 - Selector 2
+    PB03 - Data
+
 
 
 ## Outputs

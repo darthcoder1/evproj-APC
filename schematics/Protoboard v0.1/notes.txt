@@ -1,4 +1,22 @@
 
 The Prototype v0.1 has an error on U3. Trace to PA8 is not connected correctly!
 
-The inputs are pulled down to ground. I'd rather pull them up to +12v, and switch them to ground to simplify the wiring harness
+- The inputs are pulled down to ground. I'd rather pull them up to +12v, and switch them to ground to simplify the wiring harness
+
+
+- There might be a problem with the MAX4558 not switching back to normal operation after an ESD event
+  See https://datasheets.maximintegrated.com/en/ds/MAX4558-MAX4560.pdf (page 9)
+    "The holding current is typically
+     110mA in the positive direction (current flowing into the
+     pin) and 95mA in the negative direction at room temperature 
+     (see SCR Holding Current vs. Temperature in the Typical 
+     Operating Characteristics). The system should be designed 
+     so that any sources connected to the X, Y, Z or X_, Y_, Z_ 
+     pins are current limited to a value below the holding 
+     current. This ensures that the SCR turns off and normal
+     operation resumes after an ESD event"
+    
+
+
+TODO:
+    * [PCB] add current limiter to MAX4558 sources (Yn) and limit current to 10mA
