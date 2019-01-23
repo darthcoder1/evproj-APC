@@ -1,8 +1,5 @@
 
-The Prototype v0.1 has an error on U3. Trace to PA8 is not connected correctly!
-
-- The inputs are pulled down to ground. I'd rather pull them up to +12v, and switch them to ground to simplify the wiring harness
-
+The Prototype v0.1 has an error on U3. Trace to PA8 is not connected correctly! [Fixed in easyeda]
 
 - There might be a problem with the MAX4558 not switching back to normal operation after an ESD event
   See https://datasheets.maximintegrated.com/en/ds/MAX4558-MAX4560.pdf (page 9)
@@ -20,3 +17,7 @@ The Prototype v0.1 has an error on U3. Trace to PA8 is not connected correctly!
 
 TODO:
     * [PCB] add current limiter to MAX4558 sources (Yn) and limit current to 10mA
+    * [PCB] PA11 and PA12 cannot be used together with USB-CDC. The control of the multiplexer
+      input selectors must go via other pins.
+    * [PCB] Pull the input channels up to 12V. This allows to use only one wire per switch and 
+      switch it to ground
