@@ -65,7 +65,9 @@ kernel/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c \
 kernel/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c \
 src/user_main.c \
 src/syscalls.c \
-src/usb_handler.c
+src/usb_handler.c \
+src/pin_map.c \
+src/pdu_logic.c
 
 # ASM sources
 ASM_SOURCES =  \
@@ -127,7 +129,6 @@ C_INCLUDES =  \
 -Ikernel/Drivers/STM32F1xx_HAL_Driver/Inc \
 -Ikernel/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy \
 -Ikernel/Drivers/CMSIS/Device/ST/STM32F1xx/Include \
--Ikernel/Drivers/CMSIS/Include \
 -Ikernel/Drivers/CMSIS/Include \
 -Ikernel/USB_DEVICE/App \
 -Ikernel/USB_DEVICE/Target \

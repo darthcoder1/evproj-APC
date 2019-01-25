@@ -8,35 +8,45 @@
 // usb device handle
 extern USBD_HandleTypeDef hUsbDeviceFS;
 
-USBStatus usb_handler_initialize()
+USBD_StatusTypeDef usb_handler_initialize()
 {
     /* Init Device Library, add supported class and start the library. */
-    if (USBD_Init(&hUsbDeviceFS, &FS_Desc, DEVICE_FS) != USBD_OK)
-        return GenericFailure;
+    USBD_StatusTypeDef result = USBD_OK;
 
-    if (USBD_RegisterClass(&hUsbDeviceFS, &USBD_CDC) != USBD_OK)
-        return GenericFailure;
+    result = USBD_Init(&hUsbDeviceFS, &FS_Desc, DEVICE_FS);
+    if (result != USBD_OK)
+        return result;
 
-    if (USBD_CDC_RegisterInterface(&hUsbDeviceFS, &USBD_Interface_fops_FS) != USBD_OK)
-        return GenericFailure;
+    result = USBD_RegisterClass(&hUsbDeviceFS, &USBD_CDC);
+    if (result != USBD_OK)
+        return result;
 
-    return Success;
+    result = (USBD_StatusTypeDef)USBD_CDC_RegisterInterface(
+        &hUsbDeviceFS, &USBD_Interface_fops_FS);
+
+    return result;
 }
 
-USBStatus usb_handler_shutdown()
+USBD_StatusTypeDef usb_handler_shutdown()
 {
-    if (USBD_Stop(&hUsbDeviceFS) != USBD_OK)
-        return GenericFailure;
-    if (USBD_DeInit(&hUsbDeviceFS) != USBD_OK)
-        return GenericFailure;
+    USBD_StatusTypeDef result = USBD_OK;
+
+    result = USBD_Stop(&hUsbDeviceFS);
+
+    if (result != USBD_OK)
+        return result;
+
+    result = USBD_DeInit(&hUsbDeviceFS);
+
+    return result;
 }
 
-USBStatus usb_handler_start()
+USBD_StatusTypeDef usb_handler_start()
 {
-    return USBD_Start(&hUsbDeviceFS) == USBD_OK ? Success : GenericFailure;
+    return USBD_Start(&hUsbDeviceFS);
 }
 
-USBStatus usb_handler_stop()
+USBD_StatusTypeDef usb_handler_stop()
 {
-    return USBD_Stop(&hUsbDeviceFS) == USBD_OK ? Success : GenericFailure;
+    return USBD_Stop(&hUsbDeviceFS);
 }
