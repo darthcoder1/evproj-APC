@@ -14,7 +14,7 @@ BreakBeforeBinaryOperators: false
 BreakBeforeBraces: Allman  
 BreakBeforeTernaryOperators: true  
 BreakConstructorInitializersBeforeComma: false  
-ColumnLimit: 80  
+ColumnLimit: 0  
 CommentPragmas: ''  
 ConstructorInitializerAllOnOneLineOrOnePerLine: true  
 ConstructorInitializerIndentWidth: 4  
