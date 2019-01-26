@@ -4,6 +4,7 @@
 #include "stm32f1xx_hal_tim.h"
 #include "usb_handler.h"
 
+#include <assert.h>
 #include <stdio.h>
 
 // Initialize the pin with the specified settings
@@ -21,6 +22,12 @@ void write_gpio_pin(PinId pinId, uint32_t value)
 {
     HAL_GPIO_WritePin((GPIO_TypeDef*)g_PinMapping[pinId].gpio,
                       g_PinMapping[pinId].pin, value != 0 ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+void toggle_gpio_pin(PinId pinId)
+{
+    HAL_GPIO_TogglePin((GPIO_TypeDef*)g_PinMapping[pinId].gpio,
+                       g_PinMapping[pinId].pin);
 }
 
 // returns state of the pin
@@ -73,44 +80,55 @@ uint16_t read_input_channels()
     return ret;
 }
 
-typedef struct
-{
-    TIM_HandleTypeDef internalHndl;
-} timer_handle_t;
+// globals
+TIM_HandleTypeDef g_Timer2Hndl;
 
-void initialize_timer(timer_handle_t* timerHndl)
+void initialize_timer(TIM_HandleTypeDef* timerHndl)
 {
     __HAL_RCC_TIM2_CLK_ENABLE();
 
-    timerHndl->internalHndl.Instance = TIM2;
+    timerHndl->Instance = TIM2;
 
-    timerHndl->internalHndl.Init.Prescaler = 40000;
-    timerHndl->internalHndl.Init.CounterMode = TIM_COUNTERMODE_UP;
-    // timerHndl->internalHndl.Init.Period = 500;
-    timerHndl->internalHndl.Init.Period = 10000;
-    timerHndl->internalHndl.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-    timerHndl->internalHndl.Init.RepetitionCounter = 0;
+    timerHndl->Init.Prescaler = 40000;
+    timerHndl->Init.CounterMode = TIM_COUNTERMODE_UP;
+    timerHndl->Init.Period = 500;
+    timerHndl->Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    timerHndl->Init.RepetitionCounter = 0;
 
-    HAL_TIM_Base_Init(&timerHndl->internalHndl);
-    HAL_TIM_Base_Start(&timerHndl->internalHndl);
+    HAL_TIM_Base_Init(timerHndl);
+    HAL_TIM_Base_Start_IT(timerHndl);
+
+    // enable interrupts
+    HAL_NVIC_SetPriority(TIM2_IRQn, 0, 1);
+    HAL_NVIC_EnableIRQ(TIM2_IRQn);
 }
 
-int poll_timer(timer_handle_t* timerHndl)
+int poll_timer(TIM_HandleTypeDef* timerHndl)
 {
-    return __HAL_TIM_GET_COUNTER(&timerHndl->internalHndl);
+    return __HAL_TIM_GET_COUNTER(timerHndl);
 }
 
-void ErrorLoop();
+void TIM2_IRQHandler()
+{
+    if (__HAL_TIM_GET_FLAG(&g_Timer2Hndl, TIM_FLAG_UPDATE) != RESET)
+    {
+        if (__HAL_TIM_GET_IT_SOURCE(&g_Timer2Hndl, TIM_IT_UPDATE) != RESET)
+        {
+            __HAL_TIM_CLEAR_FLAG(&g_Timer2Hndl, TIM_FLAG_UPDATE);
+
+            HAL_TIM_IRQHandler(&g_Timer2Hndl);
+
+            toggle_gpio_pin(Pin_OnBoard_LED);
+        }
+    }
+}
 
 // Hooks called from kernel code
 void user_initialize()
 {
     // enable usb
-    if (usb_handler_initialize() != USBD_OK)
-        ErrorLoop();
-
-    if (usb_handler_start() != USBD_OK)
-        ErrorLoop();
+    usb_handler_initialize();
+    usb_handler_start();
 
     // enable GPIO clocks
     __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -173,45 +191,36 @@ void switch_direct_input_to_output(uint16_t input)
     write_gpio_pin(Pin_Output_Ch_6, (input >> 12) & 0x1);
 }
 
+typedef enum {
+    LedState_On = 0,
+    LedState_Off = 1
+} LedState;
+
+void switch_led_to(LedState* ledState, LedState targetLedState)
+{
+    assert(ledState != NULL);
+
+    if (*ledState != targetLedState)
+    {
+        *ledState = targetLedState;
+        write_gpio_pin(Pin_OnBoard_LED, (uint32_t)targetLedState);
+    }
+}
+
 // Entry point
 int user_main(void)
 {
-    timer_handle_t timeHandleStorage;
-
-    timer_handle_t* timeHndl = &timeHandleStorage;
-    initialize_timer(timeHndl);
+    initialize_timer(&g_Timer2Hndl);
 
     printf("Initialized!\r\n");
 
+    write_gpio_pin(Pin_OnBoard_LED, 0);
+
     while (1)
     {
-        write_gpio_pin(Pin_OnBoard_LED, 0);
-
         uint16_t input_state = handle_input_stage();
-
         switch_direct_input_to_output(input_state);
-
-        int timer = poll_timer(timeHndl);
-
-        if (timer < 5000)
-            write_gpio_pin(Pin_OnBoard_LED, 0);
-        else // if (timer == 500)
-            write_gpio_pin(Pin_OnBoard_LED, 1);
-
-        write_gpio_pin(Pin_OnBoard_LED, 1);
-        HAL_Delay(500);
     }
 
     usb_handler_shutdown();
-}
-
-void ErrorLoop()
-{
-    while (1)
-    {
-        write_gpio_pin(Pin_OnBoard_LED, 0);
-        HAL_Delay(250);
-        write_gpio_pin(Pin_OnBoard_LED, 1);
-        HAL_Delay(250);
-    }
 }
