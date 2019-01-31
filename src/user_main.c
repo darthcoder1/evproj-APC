@@ -113,9 +113,26 @@ uint16_t read_output_diag_status()
     return ret;
 }
 
+typedef struct
+{
+    // directly mapped from input
+    uint32_t LeftTurnActive : 1;
+    uint32_t RightTurnActive : 1;
+    uint32_t HazardLightActive : 1;
+} DriverInputState_t;
+
+typedef struct
+{
+    uint32_t LeftTurnActive : 1;
+    uint32_t RightTurnActive : 1;
+    uint32_t HazardLightActive : 1;
+} SystemRuntimeState_t;
+
 // globals
-TIM_HandleTypeDef g_LED_Timer;
-TIM_HandleTypeDef g_DirIndicatorPulse_Timer;
+TIM_HandleTypeDef g_LED_Timer;                // Timer for the 500s timer
+TIM_HandleTypeDef g_TurnIndicatorPulse_Timer; // Turn inidcator pulse timer
+
+SystemRuntimeState_t g_SystemState;
 
 const IRQn_Type NO_IRQ = (IRQn_Type)0xffff;
 
@@ -123,6 +140,9 @@ const IRQn_Type NO_IRQ = (IRQn_Type)0xffff;
 // prior to calling 'initialize_timer' with __HAL_RCC_TIMn_CLK_ENABLE()
 void initialize_timer(TIM_HandleTypeDef* timerHndl, TIM_TypeDef* systemTimer, int periodInMs, IRQn_Type irqToEnable)
 {
+    assert(timerHndl);
+    assert(systemTimer);
+
     timerHndl->Instance = systemTimer;
 
     timerHndl->Init.Prescaler = 40000;
@@ -148,7 +168,32 @@ void initialize_timer(TIM_HandleTypeDef* timerHndl, TIM_TypeDef* systemTimer, in
 
 int poll_timer(TIM_HandleTypeDef* timerHndl)
 {
+    assert(timerHndl);
     return __HAL_TIM_GET_COUNTER(timerHndl);
+}
+
+void reset_timer(TIM_HandleTypeDef* timerHndl)
+{
+    assert(timerHndl);
+
+    HAL_TIM_Base_Stop_IT(timerHndl);
+    __HAL_TIM_CLEAR_IT(timerHndl, TIM_IT_UPDATE);
+
+    // reset the counter
+    timerHndl->Instance->CNT = 0;
+
+    HAL_TIM_Base_Start_IT(timerHndl);
+}
+
+void disable_timer(TIM_HandleTypeDef* timerHndl)
+{
+    assert(timerHndl);
+
+    HAL_TIM_Base_Stop_IT(timerHndl);
+    __HAL_TIM_CLEAR_IT(timerHndl, TIM_IT_UPDATE);
+
+    // reset the counter
+    timerHndl->Instance->CNT = 0;
 }
 
 typedef void (*TimerCallbackFunc)(TIM_HandleTypeDef*);
@@ -178,6 +223,29 @@ void PrintPing(TIM_HandleTypeDef* timerHndl)
     printf("PING\r\n");
 }
 
+void PulseTurnLight(TIM_HandleTypeDef* timerHndl)
+{
+    if (g_SystemState.LeftTurnActive)
+    {
+        toggle_gpio_pin(PinMap_TurnSignal_Left_Back);
+        toggle_gpio_pin(PinMap_TurnSignal_Left_Front);
+    }
+
+    if (g_SystemState.RightTurnActive)
+    {
+        toggle_gpio_pin(PinMap_TurnSignal_Right_Back);
+        toggle_gpio_pin(PinMap_TurnSignal_Right_Front);
+    }
+
+    if (g_SystemState.HazardLightActive)
+    {
+        toggle_gpio_pin(PinMap_TurnSignal_Left_Back);
+        toggle_gpio_pin(PinMap_TurnSignal_Left_Front);
+        toggle_gpio_pin(PinMap_TurnSignal_Right_Back);
+        toggle_gpio_pin(PinMap_TurnSignal_Right_Front);
+    }
+}
+
 void TIM2_IRQHandler()
 {
     DefaultTimerHandler(&g_LED_Timer, BlinkLedLight);
@@ -185,7 +253,7 @@ void TIM2_IRQHandler()
 
 void TIM3_IRQHandler()
 {
-    DefaultTimerHandler(&g_DirIndicatorPulse_Timer, PrintPing);
+    DefaultTimerHandler(&g_TurnIndicatorPulse_Timer, PulseTurnLight);
 }
 
 // Hooks called from kernel code
@@ -211,19 +279,14 @@ void user_initialize()
     write_gpio_pin(Pin_OnBoard_LED, 1);
 }
 
-uint16_t handle_input_stage()
+void DebugPrintInputState(uint16_t inputState)
 {
-    uint16_t input_state = read_input_channels();
-
     const int numInputChannels = 16;
-    uint8_t channel[numInputChannels];
 
     int numActive = 0;
     for (int i = 0; i < numInputChannels; ++i)
     {
-        channel[i] = (input_state >> i) & 0x1;
-
-        if (channel[i] != 0)
+        if (IsInputChannelActive(inputState, i))
         {
             printf("Channel %d,", i);
             ++numActive;
@@ -234,7 +297,17 @@ uint16_t handle_input_stage()
     {
         printf("\r\n");
     }
-    return input_state;
+}
+
+DriverInputState_t TransformLowLevelInput(uint16_t lowLevelInput)
+{
+    DriverInputState_t driverInputState = {
+        .LeftTurnActive = IsInputChannelActive(lowLevelInput, 0),
+        .RightTurnActive = IsInputChannelActive(lowLevelInput, 1),
+        .HazardLightActive = IsInputChannelActive(lowLevelInput, 2),
+    };
+
+    return driverInputState;
 }
 
 void switch_direct_input_to_output(uint16_t input)
@@ -261,6 +334,76 @@ void switch_on_all_outputs()
     }
 }
 
+void ProcessDriverInput(DriverInputState_t driverInput, SystemRuntimeState_t* systemState)
+{
+    assert(systemState);
+    assert(!driverInput.LeftTurnActive || !driverInput.RightTurnActive);
+
+    if (driverInput.LeftTurnActive != systemState->LeftTurnActive)
+    {
+        systemState->LeftTurnActive = driverInput.LeftTurnActive;
+
+        if (systemState->LeftTurnActive)
+        {
+            write_gpio_pin(PinMap_TurnSignal_Left_Front, 1);
+            write_gpio_pin(PinMap_TurnSignal_Left_Front, 1);
+
+            reset_timer(&g_TurnIndicatorPulse_Timer);
+        }
+        else
+        {
+            write_gpio_pin(PinMap_TurnSignal_Left_Back, 0);
+            write_gpio_pin(PinMap_TurnSignal_Left_Front, 0);
+
+            disable_timer(&g_TurnIndicatorPulse_Timer);
+        }
+    }
+
+    if (driverInput.RightTurnActive != systemState->RightTurnActive)
+    {
+        systemState->RightTurnActive = driverInput.RightTurnActive;
+
+        if (systemState->RightTurnActive)
+        {
+            write_gpio_pin(PinMap_TurnSignal_Right_Back, 1);
+            write_gpio_pin(PinMap_TurnSignal_Right_Front, 1);
+
+            reset_timer(&g_TurnIndicatorPulse_Timer);
+        }
+        else
+        {
+            write_gpio_pin(PinMap_TurnSignal_Right_Back, 0);
+            write_gpio_pin(PinMap_TurnSignal_Right_Front, 0);
+
+            disable_timer(&g_TurnIndicatorPulse_Timer);
+        }
+    }
+
+    if (driverInput.HazardLightActive != systemState->HazardLightActive)
+    {
+        systemState->HazardLightActive = driverInput.HazardLightActive;
+
+        if (systemState->HazardLightActive)
+        {
+            write_gpio_pin(PinMap_TurnSignal_Left_Back, 1);
+            write_gpio_pin(PinMap_TurnSignal_Left_Front, 1);
+            write_gpio_pin(PinMap_TurnSignal_Right_Back, 1);
+            write_gpio_pin(PinMap_TurnSignal_Right_Front, 1);
+
+            reset_timer(&g_TurnIndicatorPulse_Timer);
+        }
+        else
+        {
+            write_gpio_pin(PinMap_TurnSignal_Left_Back, 0);
+            write_gpio_pin(PinMap_TurnSignal_Left_Front, 0);
+            write_gpio_pin(PinMap_TurnSignal_Right_Back, 0);
+            write_gpio_pin(PinMap_TurnSignal_Right_Front, 0);
+
+            disable_timer(&g_TurnIndicatorPulse_Timer);
+        }
+    }
+}
+
 typedef enum
 {
     LedState_On = 0,
@@ -284,7 +427,7 @@ int user_main(void)
     __HAL_RCC_TIM2_CLK_ENABLE();
     initialize_timer(&g_LED_Timer, TIM2, 500, TIM2_IRQn);
     __HAL_RCC_TIM3_CLK_ENABLE();
-    initialize_timer(&g_DirIndicatorPulse_Timer, TIM3, 1000, TIM3_IRQn);
+    initialize_timer(&g_TurnIndicatorPulse_Timer, TIM3, 1000, TIM3_IRQn);
 
     printf("Initialized!\r\n");
 
@@ -292,9 +435,12 @@ int user_main(void)
 
     while (1)
     {
-        uint16_t input_state = handle_input_stage();
+        uint16_t inputState = read_input_channels();
+        DriverInputState_t driverInputState = TransformLowLevelInput(inputState);
+
+        ProcessDriverInput(driverInputState, &g_SystemState);
         //switch_direct_input_to_output(input_state);
-        switch_on_all_outputs();
+        //switch_on_all_outputs();
 
         uint16_t output_diag_state = read_output_diag_status();
         if (output_diag_state != 0)

@@ -50,6 +50,11 @@ typedef enum
 
 #define Pin_Output_Ch(channelIdx) ((PinId)((int)Pin_Output_Ch_0 + (channelIdx)))
 
+inline int IsInputChannelActive(uint16_t inputState, int channel)
+{
+    return (inputState >> channel) & 1;
+}
+
 // InputChannelSelector_t
 typedef struct
 {
@@ -129,5 +134,14 @@ static const PinMapEntry_t g_PinMapping[] = {
     { .gpio = GPIOB, .pin = GPIO_PIN_7 }, // Pin_Outout_Diag_S1,
     { .gpio = GPIOB, .pin = GPIO_PIN_6 }, // Pin_Outout_Diag_S2,
     { .gpio = GPIOB, .pin = GPIO_PIN_5 }, // Pin_Outout_Diag_S3,
-
 };
+
+// Mapping of hardware pins from HW channel to usage. Use
+// the PinIdMapping wherever you would use PinId otherwise
+typedef enum
+{
+    PinMap_TurnSignal_Left_Front = Pin_Output_Ch(0),
+    PinMap_TurnSignal_Left_Back = Pin_Output_Ch(1),
+    PinMap_TurnSignal_Right_Front = Pin_Output_Ch(2),
+    PinMap_TurnSignal_Right_Back = Pin_Output_Ch(3),
+} PinIdMapping;
