@@ -8,52 +8,20 @@
 #include <assert.h>
 #include <stdio.h>
 
-// Initialize the pin with the specified settings
-void initialize_gpio_pin(PinId pinId, uint32_t gpioMode, uint32_t pullMode)
-{
-    GPIO_InitTypeDef gpio_init = {
-        .Pin = g_PinMapping[pinId].pin, .Mode = gpioMode, .Pull = pullMode, .Speed = GPIO_SPEED_FREQ_LOW
-    };
-
-    HAL_GPIO_Init(g_PinMapping[pinId].gpio, &gpio_init);
-}
-
-// sets pin according to 'value'
-void write_gpio_pin(PinId pinId, uint32_t value)
-{
-    HAL_GPIO_WritePin((GPIO_TypeDef*)g_PinMapping[pinId].gpio,
-                      g_PinMapping[pinId].pin, value != 0 ? GPIO_PIN_SET : GPIO_PIN_RESET);
-}
-
-void toggle_gpio_pin(PinId pinId)
-{
-    HAL_GPIO_TogglePin((GPIO_TypeDef*)g_PinMapping[pinId].gpio,
-                       g_PinMapping[pinId].pin);
-}
-
-// returns state of the pin
-uint32_t read_gpio_pin(PinId pinId)
-{
-    return HAL_GPIO_ReadPin((GPIO_TypeDef*)g_PinMapping[pinId].gpio,
-                            g_PinMapping[pinId].pin) == GPIO_PIN_SET
-               ? 1
-               : 0;
-}
-
 // initialize input channels
 void input_channels_initialize()
 {
     // Input channels: 0-7, handled by MAX4558 at U2
-    initialize_gpio_pin(Pin_Input0_S0, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    initialize_gpio_pin(Pin_Input0_S1, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    initialize_gpio_pin(Pin_Input0_S2, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    initialize_gpio_pin(Pin_Input0_Data, GPIO_MODE_INPUT, GPIO_NOPULL);
+    HWU_GPIO_Initialize(Pin_Input0_S0, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    HWU_GPIO_Initialize(Pin_Input0_S1, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    HWU_GPIO_Initialize(Pin_Input0_S2, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    HWU_GPIO_Initialize(Pin_Input0_Data, GPIO_MODE_INPUT, GPIO_NOPULL);
 
     // Input channels: 8-15, handled by MAX4558 at U3
-    initialize_gpio_pin(Pin_Input1_S0, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    initialize_gpio_pin(Pin_Input1_S1, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    initialize_gpio_pin(Pin_Input1_S2, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    initialize_gpio_pin(Pin_Input1_Data, GPIO_MODE_INPUT, GPIO_NOPULL);
+    HWU_GPIO_Initialize(Pin_Input1_S0, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    HWU_GPIO_Initialize(Pin_Input1_S1, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    HWU_GPIO_Initialize(Pin_Input1_S2, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    HWU_GPIO_Initialize(Pin_Input1_Data, GPIO_MODE_INPUT, GPIO_NOPULL);
 }
 
 void output_channels_initialize()
@@ -61,14 +29,14 @@ void output_channels_initialize()
     // initialize output channel GPIOs
     for (int i = 0; i < Pin_Output_NumOutputs; ++i)
     {
-        initialize_gpio_pin(Pin_Output_Ch(i), GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+        HWU_GPIO_Initialize(Pin_Output_Ch(i), GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
     }
 
-    initialize_gpio_pin(Pin_Outout_Diag_S0, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    initialize_gpio_pin(Pin_Outout_Diag_S1, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    initialize_gpio_pin(Pin_Outout_Diag_S2, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    initialize_gpio_pin(Pin_Outout_Diag_S3, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    initialize_gpio_pin(Pin_Output_Diag_Data, GPIO_MODE_INPUT, GPIO_NOPULL);
+    HWU_GPIO_Initialize(Pin_Outout_Diag_S0, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    HWU_GPIO_Initialize(Pin_Outout_Diag_S1, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    HWU_GPIO_Initialize(Pin_Outout_Diag_S2, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    HWU_GPIO_Initialize(Pin_Outout_Diag_S3, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    HWU_GPIO_Initialize(Pin_Output_Diag_Data, GPIO_MODE_INPUT, GPIO_NOPULL);
 }
 
 uint16_t read_input_channels()
@@ -78,19 +46,19 @@ uint16_t read_input_channels()
     {
         InputChannelSelector_t sel = g_inputChannelSelector[i];
 
-        write_gpio_pin(Pin_Input0_S0, sel.s0);
-        write_gpio_pin(Pin_Input0_S1, sel.s1);
-        write_gpio_pin(Pin_Input0_S2, sel.s2);
-        ret |= read_gpio_pin(Pin_Input0_Data) << i;
+        HWU_GPIO_WritePin(Pin_Input0_S0, sel.s0);
+        HWU_GPIO_WritePin(Pin_Input0_S1, sel.s1);
+        HWU_GPIO_WritePin(Pin_Input0_S2, sel.s2);
+        ret |= HWU_GPIO_ReadPin(Pin_Input0_Data) << i;
     }
 
     for (int i = 0; i < 8; ++i)
     {
         InputChannelSelector_t sel = g_inputChannelSelector[i];
-        write_gpio_pin(Pin_Input1_S0, sel.s0);
-        write_gpio_pin(Pin_Input1_S1, sel.s1);
-        write_gpio_pin(Pin_Input1_S2, sel.s2);
-        ret |= read_gpio_pin(Pin_Input1_Data) << (8 + i);
+        HWU_GPIO_WritePin(Pin_Input1_S0, sel.s0);
+        HWU_GPIO_WritePin(Pin_Input1_S1, sel.s1);
+        HWU_GPIO_WritePin(Pin_Input1_S2, sel.s2);
+        ret |= HWU_GPIO_ReadPin(Pin_Input1_Data) << (8 + i);
     }
 
     return ret;
@@ -103,12 +71,12 @@ uint16_t read_output_diag_status()
     {
         OutputDiagChannelSelector_t sel = g_outputDiagChannelSelector[i];
 
-        write_gpio_pin(Pin_Outout_Diag_S0, sel.s0);
-        write_gpio_pin(Pin_Outout_Diag_S1, sel.s1);
-        write_gpio_pin(Pin_Outout_Diag_S2, sel.s2);
-        write_gpio_pin(Pin_Outout_Diag_S3, sel.s3);
+        HWU_GPIO_WritePin(Pin_Outout_Diag_S0, sel.s0);
+        HWU_GPIO_WritePin(Pin_Outout_Diag_S1, sel.s1);
+        HWU_GPIO_WritePin(Pin_Outout_Diag_S2, sel.s2);
+        HWU_GPIO_WritePin(Pin_Outout_Diag_S3, sel.s3);
 
-        ret |= read_gpio_pin(Pin_Output_Diag_Data) << i;
+        ret |= HWU_GPIO_ReadPin(Pin_Output_Diag_Data) << i;
     }
 
     return ret;
@@ -154,7 +122,7 @@ void DefaultTimerHandler(TIM_HandleTypeDef* timerHndl, TimerCallbackFunc callbac
 
 void BlinkLedLight(TIM_HandleTypeDef* timerHndl)
 {
-    toggle_gpio_pin(Pin_OnBoard_LED);
+    HWU_GPIO_TogglePin(Pin_OnBoard_LED);
 }
 
 void PrintPing(TIM_HandleTypeDef* timerHndl)
@@ -166,22 +134,22 @@ void PulseTurnLight(TIM_HandleTypeDef* timerHndl)
 {
     if (g_SystemState.LeftTurnActive)
     {
-        toggle_gpio_pin(PinMap_TurnSignal_Left_Back);
-        toggle_gpio_pin(PinMap_TurnSignal_Left_Front);
+        HWU_GPIO_TogglePin(PinMap_TurnSignal_Left_Back);
+        HWU_GPIO_TogglePin(PinMap_TurnSignal_Left_Front);
     }
 
     if (g_SystemState.RightTurnActive)
     {
-        toggle_gpio_pin(PinMap_TurnSignal_Right_Back);
-        toggle_gpio_pin(PinMap_TurnSignal_Right_Front);
+        HWU_GPIO_TogglePin(PinMap_TurnSignal_Right_Back);
+        HWU_GPIO_TogglePin(PinMap_TurnSignal_Right_Front);
     }
 
     if (g_SystemState.HazardLightActive)
     {
-        toggle_gpio_pin(PinMap_TurnSignal_Left_Back);
-        toggle_gpio_pin(PinMap_TurnSignal_Left_Front);
-        toggle_gpio_pin(PinMap_TurnSignal_Right_Back);
-        toggle_gpio_pin(PinMap_TurnSignal_Right_Front);
+        HWU_GPIO_TogglePin(PinMap_TurnSignal_Left_Back);
+        HWU_GPIO_TogglePin(PinMap_TurnSignal_Left_Front);
+        HWU_GPIO_TogglePin(PinMap_TurnSignal_Right_Back);
+        HWU_GPIO_TogglePin(PinMap_TurnSignal_Right_Front);
     }
 }
 
@@ -212,10 +180,10 @@ void user_initialize()
     output_channels_initialize();
 
     // GPIO Ports Clock Enable
-    initialize_gpio_pin(Pin_OnBoard_LED, GPIO_MODE_OUTPUT_PP, GPIO_PULLUP);
+    HWU_GPIO_Initialize(Pin_OnBoard_LED, GPIO_MODE_OUTPUT_PP, GPIO_PULLUP);
 
     // Configure GPIO pin Output Level
-    write_gpio_pin(Pin_OnBoard_LED, 1);
+    HWU_GPIO_WritePin(Pin_OnBoard_LED, 1);
 }
 
 void DebugPrintInputState(uint16_t inputState)
@@ -255,12 +223,12 @@ void switch_direct_input_to_output(uint16_t input)
 
     for (int i = 0; i < Pin_Output_NumOutputs; ++i)
     {
-        write_gpio_pin(Pin_Output_Ch(i), (input >> i) & 0x1);
+        HWU_GPIO_WritePin(Pin_Output_Ch(i), (input >> i) & 0x1);
     }
 
     // HACK: map input channel 12 to output channel 6. This is only needed for
     // 2nd proto v0.1 board due to accidentialy cut trace
-    write_gpio_pin(Pin_Output_Ch_6, (input >> 12) & 0x1);
+    HWU_GPIO_WritePin(Pin_Output_Ch_6, (input >> 12) & 0x1);
 }
 
 void switch_on_all_outputs()
@@ -269,7 +237,7 @@ void switch_on_all_outputs()
 
     for (int i = 0; i < Pin_Output_NumOutputs; ++i)
     {
-        write_gpio_pin(Pin_Output_Ch(i), 1);
+        HWU_GPIO_WritePin(Pin_Output_Ch(i), 1);
     }
 }
 
@@ -284,17 +252,17 @@ void ProcessDriverInput(DriverInputState_t driverInput, SystemRuntimeState_t* sy
 
         if (systemState->LeftTurnActive)
         {
-            write_gpio_pin(PinMap_TurnSignal_Left_Front, 1);
-            write_gpio_pin(PinMap_TurnSignal_Left_Front, 1);
+            HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Front, 1);
+            HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Front, 1);
 
-            HWU_ResetTimer(&g_TurnIndicatorPulse_Timer);
+            HWU_Timer_Reset(&g_TurnIndicatorPulse_Timer);
         }
         else
         {
-            write_gpio_pin(PinMap_TurnSignal_Left_Back, 0);
-            write_gpio_pin(PinMap_TurnSignal_Left_Front, 0);
+            HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Back, 0);
+            HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Front, 0);
 
-            HWU_DisableTimer(&g_TurnIndicatorPulse_Timer);
+            HWU_Timer_Disable(&g_TurnIndicatorPulse_Timer);
         }
     }
 
@@ -304,17 +272,17 @@ void ProcessDriverInput(DriverInputState_t driverInput, SystemRuntimeState_t* sy
 
         if (systemState->RightTurnActive)
         {
-            write_gpio_pin(PinMap_TurnSignal_Right_Back, 1);
-            write_gpio_pin(PinMap_TurnSignal_Right_Front, 1);
+            HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Back, 1);
+            HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Front, 1);
 
-            HWU_ResetTimer(&g_TurnIndicatorPulse_Timer);
+            HWU_Timer_Reset(&g_TurnIndicatorPulse_Timer);
         }
         else
         {
-            write_gpio_pin(PinMap_TurnSignal_Right_Back, 0);
-            write_gpio_pin(PinMap_TurnSignal_Right_Front, 0);
+            HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Back, 0);
+            HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Front, 0);
 
-            HWU_DisableTimer(&g_TurnIndicatorPulse_Timer);
+            HWU_Timer_Disable(&g_TurnIndicatorPulse_Timer);
         }
     }
 
@@ -324,21 +292,21 @@ void ProcessDriverInput(DriverInputState_t driverInput, SystemRuntimeState_t* sy
 
         if (systemState->HazardLightActive)
         {
-            write_gpio_pin(PinMap_TurnSignal_Left_Back, 1);
-            write_gpio_pin(PinMap_TurnSignal_Left_Front, 1);
-            write_gpio_pin(PinMap_TurnSignal_Right_Back, 1);
-            write_gpio_pin(PinMap_TurnSignal_Right_Front, 1);
+            HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Back, 1);
+            HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Front, 1);
+            HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Back, 1);
+            HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Front, 1);
 
-            HWU_ResetTimer(&g_TurnIndicatorPulse_Timer);
+            HWU_Timer_Reset(&g_TurnIndicatorPulse_Timer);
         }
         else
         {
-            write_gpio_pin(PinMap_TurnSignal_Left_Back, 0);
-            write_gpio_pin(PinMap_TurnSignal_Left_Front, 0);
-            write_gpio_pin(PinMap_TurnSignal_Right_Back, 0);
-            write_gpio_pin(PinMap_TurnSignal_Right_Front, 0);
+            HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Back, 0);
+            HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Front, 0);
+            HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Back, 0);
+            HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Front, 0);
 
-            HWU_DisableTimer(&g_TurnIndicatorPulse_Timer);
+            HWU_Timer_Disable(&g_TurnIndicatorPulse_Timer);
         }
     }
 }
@@ -356,7 +324,7 @@ void switch_led_to(LedState* ledState, LedState targetLedState)
     if (*ledState != targetLedState)
     {
         *ledState = targetLedState;
-        write_gpio_pin(Pin_OnBoard_LED, (uint32_t)targetLedState);
+        HWU_GPIO_WritePin(Pin_OnBoard_LED, (uint32_t)targetLedState);
     }
 }
 
@@ -364,13 +332,13 @@ void switch_led_to(LedState* ledState, LedState targetLedState)
 int user_main(void)
 {
     __HAL_RCC_TIM2_CLK_ENABLE();
-    HWU_InitializeTimer(&g_LED_Timer, TIM2, 500, TIM2_IRQn);
+    HWU_Timer_Initialize(&g_LED_Timer, TIM2, 500, TIM2_IRQn);
     __HAL_RCC_TIM3_CLK_ENABLE();
-    HWU_InitializeTimer(&g_TurnIndicatorPulse_Timer, TIM3, 1000, TIM3_IRQn);
+    HWU_Timer_Initialize(&g_TurnIndicatorPulse_Timer, TIM3, 1000, TIM3_IRQn);
 
     printf("Initialized!\r\n");
 
-    write_gpio_pin(Pin_OnBoard_LED, 0);
+    HWU_GPIO_WritePin(Pin_OnBoard_LED, 0);
 
     while (1)
     {

@@ -18,7 +18,8 @@
             "usb_handler.h": "c",
             "pin_map.h": "c",
             "stm32f103xb.h": "c",
-            "stm32f1xx_hal_tim.h": "c"
+            "stm32f1xx_hal_tim.h": "c",
+            "hw_util.h": "c"
         }
     }
 }

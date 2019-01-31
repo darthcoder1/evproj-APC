@@ -10,7 +10,7 @@ const IRQn_Type NO_IRQ = (IRQn_Type)0xffff;
 
 // The clock for the passed 'systemTimer' (TIM1, TIM2, TIMn) must be enabled with
 // prior to calling 'initialize_timer' with __HAL_RCC_TIMn_CLK_ENABLE()
-void HWU_InitializeTimer(TIM_HandleTypeDef* timerHndl, TIM_TypeDef* systemTimer, int periodInMs, IRQn_Type irqToEnable)
+void HWU_Timer_Initialize(TIM_HandleTypeDef* timerHndl, TIM_TypeDef* systemTimer, int periodInMs, IRQn_Type irqToEnable)
 {
     assert(timerHndl);
     assert(systemTimer);
@@ -38,13 +38,13 @@ void HWU_InitializeTimer(TIM_HandleTypeDef* timerHndl, TIM_TypeDef* systemTimer,
     }
 }
 
-int HWU_PollTimer(TIM_HandleTypeDef* timerHndl)
+int HWU_Timer_Poll(TIM_HandleTypeDef* timerHndl)
 {
     assert(timerHndl);
     return __HAL_TIM_GET_COUNTER(timerHndl);
 }
 
-void HWU_ResetTimer(TIM_HandleTypeDef* timerHndl)
+void HWU_Timer_Reset(TIM_HandleTypeDef* timerHndl)
 {
     assert(timerHndl);
 
@@ -57,7 +57,7 @@ void HWU_ResetTimer(TIM_HandleTypeDef* timerHndl)
     HAL_TIM_Base_Start_IT(timerHndl);
 }
 
-void HWU_DisableTimer(TIM_HandleTypeDef* timerHndl)
+void HWU_Timer_Disable(TIM_HandleTypeDef* timerHndl)
 {
     assert(timerHndl);
 
@@ -66,4 +66,39 @@ void HWU_DisableTimer(TIM_HandleTypeDef* timerHndl)
 
     // reset the counter
     timerHndl->Instance->CNT = 0;
+}
+
+////////////////////////////////////////////////////////////
+//GPIO utils
+
+// Initialize the pin with the specified settings
+void HWU_GPIO_Initialize(PinId pinId, uint32_t gpioMode, uint32_t pullMode)
+{
+    GPIO_InitTypeDef gpio_init = {
+        .Pin = g_PinMapping[pinId].pin, .Mode = gpioMode, .Pull = pullMode, .Speed = GPIO_SPEED_FREQ_LOW
+    };
+
+    HAL_GPIO_Init(g_PinMapping[pinId].gpio, &gpio_init);
+}
+
+// sets pin according to 'value'
+void HWU_GPIO_WritePin(PinId pinId, uint32_t value)
+{
+    HAL_GPIO_WritePin((GPIO_TypeDef*)g_PinMapping[pinId].gpio,
+                      g_PinMapping[pinId].pin, value != 0 ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+void HWU_GPIO_TogglePin(PinId pinId)
+{
+    HAL_GPIO_TogglePin((GPIO_TypeDef*)g_PinMapping[pinId].gpio,
+                       g_PinMapping[pinId].pin);
+}
+
+// returns state of the pin
+uint32_t HWU_GPIO_ReadPin(PinId pinId)
+{
+    return HAL_GPIO_ReadPin((GPIO_TypeDef*)g_PinMapping[pinId].gpio,
+                            g_PinMapping[pinId].pin) == GPIO_PIN_SET
+               ? 1
+               : 0;
 }
