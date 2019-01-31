@@ -28,6 +28,14 @@ void HWU_Timer_Reset(TIM_HandleTypeDef* timerHndl);
 // HWU_ResetTimer() will be called on this timer.
 void HWU_Timer_Disable(TIM_HandleTypeDef* timerHndl);
 
+// Timer callback function. Use this function type to pass a handler
+// callback into DefaultTimerHandler
+typedef void (*TimerCallbackFunc)(TIM_HandleTypeDef*);
+
+// Default timer handler. This will check the interrupt flags and reset them
+// correctly before and after the callback specified was called.
+void HWU_Timer_DefaultHandler(TIM_HandleTypeDef* timerHndl, TimerCallbackFunc callback);
+
 ////////////////////////////////////////////////////////////
 //GPIO utils
 

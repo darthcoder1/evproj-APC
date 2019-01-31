@@ -8,6 +8,27 @@
 #include <assert.h>
 #include <stdio.h>
 
+typedef struct
+{
+    // directly mapped from input
+    uint32_t LeftTurnActive : 1;
+    uint32_t RightTurnActive : 1;
+    uint32_t HazardLightActive : 1;
+} DriverInputState_t;
+
+typedef struct
+{
+    uint32_t LeftTurnActive : 1;
+    uint32_t RightTurnActive : 1;
+    uint32_t HazardLightActive : 1;
+} SystemRuntimeState_t;
+
+// globals
+TIM_HandleTypeDef g_LED_Timer;                // Timer for the 500s timer
+TIM_HandleTypeDef g_TurnIndicatorPulse_Timer; // Turn inidcator pulse timer
+
+SystemRuntimeState_t g_SystemState;
+
 // initialize input channels
 void input_channels_initialize()
 {
@@ -81,45 +102,6 @@ uint16_t read_output_diag_status()
 
     return ret;
 }
-
-typedef struct
-{
-    // directly mapped from input
-    uint32_t LeftTurnActive : 1;
-    uint32_t RightTurnActive : 1;
-    uint32_t HazardLightActive : 1;
-} DriverInputState_t;
-
-typedef struct
-{
-    uint32_t LeftTurnActive : 1;
-    uint32_t RightTurnActive : 1;
-    uint32_t HazardLightActive : 1;
-} SystemRuntimeState_t;
-
-// globals
-TIM_HandleTypeDef g_LED_Timer;                // Timer for the 500s timer
-TIM_HandleTypeDef g_TurnIndicatorPulse_Timer; // Turn inidcator pulse timer
-
-SystemRuntimeState_t g_SystemState;
-
-typedef void (*TimerCallbackFunc)(TIM_HandleTypeDef*);
-
-void DefaultTimerHandler(TIM_HandleTypeDef* timerHndl, TimerCallbackFunc callback)
-{
-    if (__HAL_TIM_GET_FLAG(timerHndl, TIM_FLAG_UPDATE) != RESET)
-    {
-        if (__HAL_TIM_GET_IT_SOURCE(timerHndl, TIM_IT_UPDATE) != RESET)
-        {
-            __HAL_TIM_CLEAR_FLAG(timerHndl, TIM_FLAG_UPDATE);
-
-            HAL_TIM_IRQHandler(timerHndl);
-
-            callback(timerHndl);
-        }
-    }
-}
-
 void BlinkLedLight(TIM_HandleTypeDef* timerHndl)
 {
     HWU_GPIO_TogglePin(Pin_OnBoard_LED);
@@ -155,12 +137,12 @@ void PulseTurnLight(TIM_HandleTypeDef* timerHndl)
 
 void TIM2_IRQHandler()
 {
-    DefaultTimerHandler(&g_LED_Timer, BlinkLedLight);
+    HWU_Timer_DefaultHandler(&g_LED_Timer, BlinkLedLight);
 }
 
 void TIM3_IRQHandler()
 {
-    DefaultTimerHandler(&g_TurnIndicatorPulse_Timer, PulseTurnLight);
+    HWU_Timer_DefaultHandler(&g_TurnIndicatorPulse_Timer, PulseTurnLight);
 }
 
 // Hooks called from kernel code
@@ -225,10 +207,6 @@ void switch_direct_input_to_output(uint16_t input)
     {
         HWU_GPIO_WritePin(Pin_Output_Ch(i), (input >> i) & 0x1);
     }
-
-    // HACK: map input channel 12 to output channel 6. This is only needed for
-    // 2nd proto v0.1 board due to accidentialy cut trace
-    HWU_GPIO_WritePin(Pin_Output_Ch_6, (input >> 12) & 0x1);
 }
 
 void switch_on_all_outputs()
@@ -250,81 +228,41 @@ void ProcessDriverInput(DriverInputState_t driverInput, SystemRuntimeState_t* sy
     {
         systemState->LeftTurnActive = driverInput.LeftTurnActive;
 
+        HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Front, systemState->LeftTurnActive);
+        HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Back, systemState->LeftTurnActive);
+
         if (systemState->LeftTurnActive)
-        {
-            HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Front, 1);
-            HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Front, 1);
-
             HWU_Timer_Reset(&g_TurnIndicatorPulse_Timer);
-        }
         else
-        {
-            HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Back, 0);
-            HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Front, 0);
-
             HWU_Timer_Disable(&g_TurnIndicatorPulse_Timer);
-        }
     }
 
     if (driverInput.RightTurnActive != systemState->RightTurnActive)
     {
         systemState->RightTurnActive = driverInput.RightTurnActive;
 
+        HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Back, systemState->RightTurnActive);
+        HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Front, systemState->RightTurnActive);
+
         if (systemState->RightTurnActive)
-        {
-            HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Back, 1);
-            HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Front, 1);
-
             HWU_Timer_Reset(&g_TurnIndicatorPulse_Timer);
-        }
         else
-        {
-            HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Back, 0);
-            HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Front, 0);
-
             HWU_Timer_Disable(&g_TurnIndicatorPulse_Timer);
-        }
     }
 
     if (driverInput.HazardLightActive != systemState->HazardLightActive)
     {
         systemState->HazardLightActive = driverInput.HazardLightActive;
 
+        HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Back, systemState->HazardLightActive);
+        HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Front, systemState->HazardLightActive);
+        HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Back, systemState->HazardLightActive);
+        HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Front, systemState->HazardLightActive);
+
         if (systemState->HazardLightActive)
-        {
-            HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Back, 1);
-            HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Front, 1);
-            HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Back, 1);
-            HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Front, 1);
-
             HWU_Timer_Reset(&g_TurnIndicatorPulse_Timer);
-        }
         else
-        {
-            HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Back, 0);
-            HWU_GPIO_WritePin(PinMap_TurnSignal_Left_Front, 0);
-            HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Back, 0);
-            HWU_GPIO_WritePin(PinMap_TurnSignal_Right_Front, 0);
-
             HWU_Timer_Disable(&g_TurnIndicatorPulse_Timer);
-        }
-    }
-}
-
-typedef enum
-{
-    LedState_On = 0,
-    LedState_Off = 1
-} LedState;
-
-void switch_led_to(LedState* ledState, LedState targetLedState)
-{
-    assert(ledState != NULL);
-
-    if (*ledState != targetLedState)
-    {
-        *ledState = targetLedState;
-        HWU_GPIO_WritePin(Pin_OnBoard_LED, (uint32_t)targetLedState);
     }
 }
 
@@ -333,6 +271,7 @@ int user_main(void)
 {
     __HAL_RCC_TIM2_CLK_ENABLE();
     HWU_Timer_Initialize(&g_LED_Timer, TIM2, 500, TIM2_IRQn);
+
     __HAL_RCC_TIM3_CLK_ENABLE();
     HWU_Timer_Initialize(&g_TurnIndicatorPulse_Timer, TIM3, 1000, TIM3_IRQn);
 

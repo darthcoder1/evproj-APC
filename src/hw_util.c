@@ -68,6 +68,21 @@ void HWU_Timer_Disable(TIM_HandleTypeDef* timerHndl)
     timerHndl->Instance->CNT = 0;
 }
 
+void HWU_Timer_DefaultHandler(TIM_HandleTypeDef* timerHndl, TimerCallbackFunc callback)
+{
+    if (__HAL_TIM_GET_FLAG(timerHndl, TIM_FLAG_UPDATE) != RESET)
+    {
+        if (__HAL_TIM_GET_IT_SOURCE(timerHndl, TIM_IT_UPDATE) != RESET)
+        {
+            __HAL_TIM_CLEAR_FLAG(timerHndl, TIM_FLAG_UPDATE);
+
+            HAL_TIM_IRQHandler(timerHndl);
+
+            callback(timerHndl);
+        }
+    }
+}
+
 ////////////////////////////////////////////////////////////
 //GPIO utils
 
