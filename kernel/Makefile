@@ -67,7 +67,8 @@ src/user_main.c \
 src/syscalls.c \
 src/usb_handler.c \
 src/pin_map.c \
-src/pdu_logic.c
+src/pdu_logic.c \
+src/hw_util.c
 
 # ASM sources
 ASM_SOURCES =  \

@@ -1,3 +1,4 @@
+#include "hw_util.h"
 #include "main.h"
 #include "pin_map.h"
 #include "stm32f1xx_hal_rcc.h"
@@ -133,68 +134,6 @@ TIM_HandleTypeDef g_LED_Timer;                // Timer for the 500s timer
 TIM_HandleTypeDef g_TurnIndicatorPulse_Timer; // Turn inidcator pulse timer
 
 SystemRuntimeState_t g_SystemState;
-
-const IRQn_Type NO_IRQ = (IRQn_Type)0xffff;
-
-// The clock for the passed 'systemTimer' (TIM1, TIM2, TIMn) must be enabled with
-// prior to calling 'initialize_timer' with __HAL_RCC_TIMn_CLK_ENABLE()
-void initialize_timer(TIM_HandleTypeDef* timerHndl, TIM_TypeDef* systemTimer, int periodInMs, IRQn_Type irqToEnable)
-{
-    assert(timerHndl);
-    assert(systemTimer);
-
-    timerHndl->Instance = systemTimer;
-
-    timerHndl->Init.Prescaler = 40000;
-    timerHndl->Init.CounterMode = TIM_COUNTERMODE_UP;
-    timerHndl->Init.Period = periodInMs;
-    timerHndl->Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-    timerHndl->Init.RepetitionCounter = 0;
-
-    HAL_TIM_Base_Init(timerHndl);
-
-    if (irqToEnable == NO_IRQ)
-    {
-        HAL_TIM_Base_Start(timerHndl);
-    }
-    else
-    {
-        HAL_TIM_Base_Start_IT(timerHndl);
-        // enable interrupts
-        HAL_NVIC_SetPriority(irqToEnable, 0, 1);
-        HAL_NVIC_EnableIRQ(irqToEnable);
-    }
-}
-
-int poll_timer(TIM_HandleTypeDef* timerHndl)
-{
-    assert(timerHndl);
-    return __HAL_TIM_GET_COUNTER(timerHndl);
-}
-
-void reset_timer(TIM_HandleTypeDef* timerHndl)
-{
-    assert(timerHndl);
-
-    HAL_TIM_Base_Stop_IT(timerHndl);
-    __HAL_TIM_CLEAR_IT(timerHndl, TIM_IT_UPDATE);
-
-    // reset the counter
-    timerHndl->Instance->CNT = 0;
-
-    HAL_TIM_Base_Start_IT(timerHndl);
-}
-
-void disable_timer(TIM_HandleTypeDef* timerHndl)
-{
-    assert(timerHndl);
-
-    HAL_TIM_Base_Stop_IT(timerHndl);
-    __HAL_TIM_CLEAR_IT(timerHndl, TIM_IT_UPDATE);
-
-    // reset the counter
-    timerHndl->Instance->CNT = 0;
-}
 
 typedef void (*TimerCallbackFunc)(TIM_HandleTypeDef*);
 
@@ -348,14 +287,14 @@ void ProcessDriverInput(DriverInputState_t driverInput, SystemRuntimeState_t* sy
             write_gpio_pin(PinMap_TurnSignal_Left_Front, 1);
             write_gpio_pin(PinMap_TurnSignal_Left_Front, 1);
 
-            reset_timer(&g_TurnIndicatorPulse_Timer);
+            HWU_ResetTimer(&g_TurnIndicatorPulse_Timer);
         }
         else
         {
             write_gpio_pin(PinMap_TurnSignal_Left_Back, 0);
             write_gpio_pin(PinMap_TurnSignal_Left_Front, 0);
 
-            disable_timer(&g_TurnIndicatorPulse_Timer);
+            HWU_DisableTimer(&g_TurnIndicatorPulse_Timer);
         }
     }
 
@@ -368,14 +307,14 @@ void ProcessDriverInput(DriverInputState_t driverInput, SystemRuntimeState_t* sy
             write_gpio_pin(PinMap_TurnSignal_Right_Back, 1);
             write_gpio_pin(PinMap_TurnSignal_Right_Front, 1);
 
-            reset_timer(&g_TurnIndicatorPulse_Timer);
+            HWU_ResetTimer(&g_TurnIndicatorPulse_Timer);
         }
         else
         {
             write_gpio_pin(PinMap_TurnSignal_Right_Back, 0);
             write_gpio_pin(PinMap_TurnSignal_Right_Front, 0);
 
-            disable_timer(&g_TurnIndicatorPulse_Timer);
+            HWU_DisableTimer(&g_TurnIndicatorPulse_Timer);
         }
     }
 
@@ -390,7 +329,7 @@ void ProcessDriverInput(DriverInputState_t driverInput, SystemRuntimeState_t* sy
             write_gpio_pin(PinMap_TurnSignal_Right_Back, 1);
             write_gpio_pin(PinMap_TurnSignal_Right_Front, 1);
 
-            reset_timer(&g_TurnIndicatorPulse_Timer);
+            HWU_ResetTimer(&g_TurnIndicatorPulse_Timer);
         }
         else
         {
@@ -399,7 +338,7 @@ void ProcessDriverInput(DriverInputState_t driverInput, SystemRuntimeState_t* sy
             write_gpio_pin(PinMap_TurnSignal_Right_Back, 0);
             write_gpio_pin(PinMap_TurnSignal_Right_Front, 0);
 
-            disable_timer(&g_TurnIndicatorPulse_Timer);
+            HWU_DisableTimer(&g_TurnIndicatorPulse_Timer);
         }
     }
 }
@@ -425,9 +364,9 @@ void switch_led_to(LedState* ledState, LedState targetLedState)
 int user_main(void)
 {
     __HAL_RCC_TIM2_CLK_ENABLE();
-    initialize_timer(&g_LED_Timer, TIM2, 500, TIM2_IRQn);
+    HWU_InitializeTimer(&g_LED_Timer, TIM2, 500, TIM2_IRQn);
     __HAL_RCC_TIM3_CLK_ENABLE();
-    initialize_timer(&g_TurnIndicatorPulse_Timer, TIM3, 1000, TIM3_IRQn);
+    HWU_InitializeTimer(&g_TurnIndicatorPulse_Timer, TIM3, 1000, TIM3_IRQn);
 
     printf("Initialized!\r\n");
 
@@ -439,8 +378,6 @@ int user_main(void)
         DriverInputState_t driverInputState = TransformLowLevelInput(inputState);
 
         ProcessDriverInput(driverInputState, &g_SystemState);
-        //switch_direct_input_to_output(input_state);
-        //switch_on_all_outputs();
 
         uint16_t output_diag_state = read_output_diag_status();
         if (output_diag_state != 0)
