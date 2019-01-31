@@ -55,6 +55,21 @@ void input_channels_initialize()
     initialize_gpio_pin(Pin_Input1_Data, GPIO_MODE_INPUT, GPIO_NOPULL);
 }
 
+void output_channels_initialize()
+{
+    // initialize output channel GPIOs
+    for (int i = 0; i < Pin_Output_NumOutputs; ++i)
+    {
+        initialize_gpio_pin(Pin_Output_Ch(i), GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    }
+
+    initialize_gpio_pin(Pin_Outout_Diag_S0, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    initialize_gpio_pin(Pin_Outout_Diag_S1, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    initialize_gpio_pin(Pin_Outout_Diag_S2, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    initialize_gpio_pin(Pin_Outout_Diag_S3, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
+    initialize_gpio_pin(Pin_Output_Diag_Data, GPIO_MODE_INPUT, GPIO_NOPULL);
+}
+
 uint16_t read_input_channels()
 {
     uint16_t ret = 0;
@@ -75,6 +90,24 @@ uint16_t read_input_channels()
         write_gpio_pin(Pin_Input1_S1, sel.s1);
         write_gpio_pin(Pin_Input1_S2, sel.s2);
         ret |= read_gpio_pin(Pin_Input1_Data) << (8 + i);
+    }
+
+    return ret;
+}
+
+uint16_t read_output_diag_status()
+{
+    uint16_t ret = 0;
+    for (int i = 0; i < Pin_Output_NumOutputs; ++i)
+    {
+        OutputDiagChannelSelector_t sel = g_outputDiagChannelSelector[i];
+
+        write_gpio_pin(Pin_Outout_Diag_S0, sel.s0);
+        write_gpio_pin(Pin_Outout_Diag_S1, sel.s1);
+        write_gpio_pin(Pin_Outout_Diag_S2, sel.s2);
+        write_gpio_pin(Pin_Outout_Diag_S3, sel.s3);
+
+        ret |= read_gpio_pin(Pin_Output_Diag_Data) << i;
     }
 
     return ret;
@@ -137,12 +170,7 @@ void user_initialize()
 
     // initialize input channel GPIOs
     input_channels_initialize();
-
-    // initialize output channel GPIOs
-    for (int i = 0; i < Pin_Output_NumOutputs; ++i)
-    {
-        initialize_gpio_pin(Pin_Output_Ch(i), GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN);
-    }
+    output_channels_initialize();
 
     // GPIO Ports Clock Enable
     initialize_gpio_pin(Pin_OnBoard_LED, GPIO_MODE_OUTPUT_PP, GPIO_PULLUP);
@@ -191,6 +219,16 @@ void switch_direct_input_to_output(uint16_t input)
     write_gpio_pin(Pin_Output_Ch_6, (input >> 12) & 0x1);
 }
 
+void switch_on_all_outputs()
+{
+    // directly map to output for testing
+
+    for (int i = 0; i < Pin_Output_NumOutputs; ++i)
+    {
+        write_gpio_pin(Pin_Output_Ch(i), 1);
+    }
+}
+
 typedef enum {
     LedState_On = 0,
     LedState_Off = 1
@@ -219,7 +257,20 @@ int user_main(void)
     while (1)
     {
         uint16_t input_state = handle_input_stage();
-        switch_direct_input_to_output(input_state);
+        //switch_direct_input_to_output(input_state);
+        switch_on_all_outputs();
+
+        uint16_t output_diag_state = read_output_diag_status();
+        if (output_diag_state != 0)
+        {
+            for (int i = 0; i < Pin_Output_NumOutputs; ++i)
+            {
+                if (((output_diag_state >> i) & 1) == 1)
+                {
+                    printf("Error on Output Ch[%d]\r\n", i);
+                }
+            }
+        }
     }
 
     usb_handler_shutdown();
