@@ -114,26 +114,36 @@ uint16_t read_output_diag_status()
 }
 
 // globals
-TIM_HandleTypeDef g_Timer2Hndl;
+TIM_HandleTypeDef g_LED_Timer;
+TIM_HandleTypeDef g_DirIndicatorPulse_Timer;
 
-void initialize_timer(TIM_HandleTypeDef* timerHndl)
+const IRQn_Type NO_IRQ = (IRQn_Type)0xffff;
+
+// The clock for the passed 'systemTimer' (TIM1, TIM2, TIMn) must be enabled with
+// prior to calling 'initialize_timer' with __HAL_RCC_TIMn_CLK_ENABLE()
+void initialize_timer(TIM_HandleTypeDef* timerHndl, TIM_TypeDef* systemTimer, int periodInMs, IRQn_Type irqToEnable)
 {
-    __HAL_RCC_TIM2_CLK_ENABLE();
-
-    timerHndl->Instance = TIM2;
+    timerHndl->Instance = systemTimer;
 
     timerHndl->Init.Prescaler = 40000;
     timerHndl->Init.CounterMode = TIM_COUNTERMODE_UP;
-    timerHndl->Init.Period = 500;
+    timerHndl->Init.Period = periodInMs;
     timerHndl->Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     timerHndl->Init.RepetitionCounter = 0;
 
     HAL_TIM_Base_Init(timerHndl);
-    HAL_TIM_Base_Start_IT(timerHndl);
 
-    // enable interrupts
-    HAL_NVIC_SetPriority(TIM2_IRQn, 0, 1);
-    HAL_NVIC_EnableIRQ(TIM2_IRQn);
+    if (irqToEnable == NO_IRQ)
+    {
+        HAL_TIM_Base_Start(timerHndl);
+    }
+    else
+    {
+        HAL_TIM_Base_Start_IT(timerHndl);
+        // enable interrupts
+        HAL_NVIC_SetPriority(irqToEnable, 0, 1);
+        HAL_NVIC_EnableIRQ(irqToEnable);
+    }
 }
 
 int poll_timer(TIM_HandleTypeDef* timerHndl)
@@ -141,19 +151,41 @@ int poll_timer(TIM_HandleTypeDef* timerHndl)
     return __HAL_TIM_GET_COUNTER(timerHndl);
 }
 
-void TIM2_IRQHandler()
+typedef void (*TimerCallbackFunc)(TIM_HandleTypeDef*);
+
+void DefaultTimerHandler(TIM_HandleTypeDef* timerHndl, TimerCallbackFunc callback)
 {
-    if (__HAL_TIM_GET_FLAG(&g_Timer2Hndl, TIM_FLAG_UPDATE) != RESET)
+    if (__HAL_TIM_GET_FLAG(timerHndl, TIM_FLAG_UPDATE) != RESET)
     {
-        if (__HAL_TIM_GET_IT_SOURCE(&g_Timer2Hndl, TIM_IT_UPDATE) != RESET)
+        if (__HAL_TIM_GET_IT_SOURCE(timerHndl, TIM_IT_UPDATE) != RESET)
         {
-            __HAL_TIM_CLEAR_FLAG(&g_Timer2Hndl, TIM_FLAG_UPDATE);
+            __HAL_TIM_CLEAR_FLAG(timerHndl, TIM_FLAG_UPDATE);
 
-            HAL_TIM_IRQHandler(&g_Timer2Hndl);
+            HAL_TIM_IRQHandler(timerHndl);
 
-            toggle_gpio_pin(Pin_OnBoard_LED);
+            callback(timerHndl);
         }
     }
+}
+
+void BlinkLedLight(TIM_HandleTypeDef* timerHndl)
+{
+    toggle_gpio_pin(Pin_OnBoard_LED);
+}
+
+void PrintPing(TIM_HandleTypeDef* timerHndl)
+{
+    printf("PING\r\n");
+}
+
+void TIM2_IRQHandler()
+{
+    DefaultTimerHandler(&g_LED_Timer, BlinkLedLight);
+}
+
+void TIM3_IRQHandler()
+{
+    DefaultTimerHandler(&g_DirIndicatorPulse_Timer, PrintPing);
 }
 
 // Hooks called from kernel code
@@ -229,7 +261,8 @@ void switch_on_all_outputs()
     }
 }
 
-typedef enum {
+typedef enum
+{
     LedState_On = 0,
     LedState_Off = 1
 } LedState;
@@ -248,7 +281,10 @@ void switch_led_to(LedState* ledState, LedState targetLedState)
 // Entry point
 int user_main(void)
 {
-    initialize_timer(&g_Timer2Hndl);
+    __HAL_RCC_TIM2_CLK_ENABLE();
+    initialize_timer(&g_LED_Timer, TIM2, 500, TIM2_IRQn);
+    __HAL_RCC_TIM3_CLK_ENABLE();
+    initialize_timer(&g_DirIndicatorPulse_Timer, TIM3, 1000, TIM3_IRQn);
 
     printf("Initialized!\r\n");
 
